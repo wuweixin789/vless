@@ -36,6 +36,7 @@ let go2Socks5s = [
 	'*tapecontent.net',
 	'*cloudatacdn.com',
 	'*.loadshare.org',
+	'gemini.google.com',
 ];
 let addresses = [
 	//当sub为空时启用本地优选域名/优选IP，若不带端口号 TLS默认端口为443，#号后为备注别名

@@ -388,6 +388,23 @@ async function vlessOverWSHandler(request) {
  * @returns {Promise<void>} 异步操作的 Promise
  */
 async function handleTCPOutBound(remoteSocket, addressType, addressRemote, portRemote, rawClientData, webSocket, vlessResponseHeader, log,) {
+	// 使用 Google DNS 查询 IP
+	async function resolveDNS(address) {
+		const response = await fetch(`https://dns.google/resolve?name=${address}&type=A`);
+		const data = await response.json();
+		if (data.Answer && data.Answer.length > 0) {
+			return data.Answer[0].data;
+		}
+		return null;
+	}
+
+	// 查询 IP 是否为 Cloudflare 的 ASN
+	async function isCloudflareASN(ip) {
+		const response = await fetch(`https://ipinfo.io/${ip}?token=447dca72ae2f1a`);
+		const data = await response.json();
+		return data.org && data.org.includes("AS13335");
+	}
+	
 	async function useSocks5Pattern(address) {
 		if ( go2Socks5s.includes(atob('YWxsIGlu')) || go2Socks5s.includes(atob('Kg==')) ) return true;
 		return go2Socks5s.some(pattern => {
@@ -456,6 +473,15 @@ async function handleTCPOutBound(remoteSocket, addressType, addressRemote, portR
 
 	let useSocks = false;
 	if( go2Socks5s.length > 0 && enableSocks ) useSocks = await useSocks5Pattern(addressRemote);
+
+	let targetIP = await resolveDNS(addressRemote);
+
+	// 判断是否需要代理
+	if (targetIP && await isCloudflareASN(targetIP)) {
+		if (enableSocks) useSocks = true;
+		addressRemote = proxyIP || addressRemote;
+	}
+
 	// 首次尝试连接远程服务器
 	let tcpSocket = await connectAndWrite(addressRemote, portRemote, useSocks);
 
